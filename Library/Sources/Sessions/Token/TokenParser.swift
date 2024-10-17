@@ -8,7 +8,7 @@ final class TokenParserImpl: TokenParser {
     
     func parse(tokenInfo: String) -> (token: String, expires: TimeInterval, info: [String: String])? {
         var token: String?
-        var expires: TimeInterval?
+        var expires: TimeInterval? = .init(0)
         var info = [String: String]()
         
         let components = tokenInfo.components(separatedBy: "&")
@@ -17,7 +17,7 @@ final class TokenParserImpl: TokenParser {
             let componentPair = component.components(separatedBy: "=")
             
             if let key = componentPair.first, let value = componentPair.last {
-                
+                                
                 switch key {
                 case "access_token":
                     token = value
