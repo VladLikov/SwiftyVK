@@ -159,6 +159,14 @@ final class DependenciesImpl: Dependencies {
         )
     }()
     
+    func webController(urlRequest: URLRequest, onResult: @escaping (WebControllerResult) -> (), onDismiss: (() -> ())?) -> any WebController {
+        DispatchQueue.anywayOnMain {
+            let vc = WebControllerIOS(urlRequest: urlRequest, onResult: onResult, onDismiss: onDismiss) ?? webController(onDismiss: onDismiss)
+            self.delegate?.vkNeedToPresent(viewController: vc as! VKViewController)
+            return vc
+        }
+    }
+    
     func webController(onDismiss: (() -> ())?) -> WebController {
         return viewController(name: "Web", onDismiss: onDismiss)
     }
