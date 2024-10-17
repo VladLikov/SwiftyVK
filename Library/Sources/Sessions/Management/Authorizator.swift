@@ -140,18 +140,19 @@ final class AuthorizatorImpl: Authorizator {
         ) throws -> InvalidatableToken {
         defer { webPresenter.dismiss() }
 
-        let token: InvalidatableToken
-        if vkAppProxy.canSend(query: appAuthQuery) {
-            vkAppProxy.send(query: appAuthQuery)
-            guard let vkAppToken = vkAppToken else {
-                throw VKError.authorizationCancelled
-            }
-
-            token = vkAppToken
-        }
-        else {
-            token = try webToken(sessionId: sessionId, request: webRequest)
-        }
+        let token = try webToken(sessionId: sessionId, request: webRequest)
+            
+//        if vkAppProxy.canSend(query: appAuthQuery) {
+//            vkAppProxy.send(query: appAuthQuery)
+//            guard let vkAppToken = vkAppToken else {
+//                throw VKError.authorizationCancelled
+//            }
+//
+//            token = vkAppToken
+//        }
+//        else {
+//            token = try webToken(sessionId: sessionId, request: webRequest)
+//        }
 
         try tokenStorage.save(token, for:  sessionId)
         return token
@@ -167,6 +168,7 @@ final class AuthorizatorImpl: Authorizator {
         do {
             cookiesHolder?.replace(for: sessionId, url: url)
             let tokenInfo = try webPresenter.presentWith(urlRequest: request)
+            print(tokenInfo)
             let token = try makeToken(tokenInfo: tokenInfo)
             cookiesHolder?.save(for: sessionId, url: url)
             return token
