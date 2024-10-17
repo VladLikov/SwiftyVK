@@ -58,25 +58,23 @@ final class WebPresenterImpl: WebPresenter {
         let state = LoadingState(originalPath: urlRequest.url?.path ?? "")
         
         return try uiSyncQueue.sync {
-            let controller = controllerMaker.webController {
-                semaphore.signal()
-            }
             
-            // This is a hack to avoid crash while WebKit deinitializing not in the main thread
-            // https://github.com/SwiftyVK/SwiftyVK/issues/142
-            defer { releaseInMainThreadAfterDelay(controller) }
-            
-            currentController = controller
-            
-            controller.load(
+            let controller = controllerMaker.webController(
                 urlRequest: urlRequest,
                 onResult: { [weak self] in
                     self?.handle(
                         result: $0,
                         state: state
                     )
-                }
-            )
+                }, onDismiss: {
+                    semaphore.signal()
+                })
+            
+            // This is a hack to avoid crash while WebKit deinitializing not in the main thread
+            // https://github.com/SwiftyVK/SwiftyVK/issues/142
+            defer { releaseInMainThreadAfterDelay(controller) }
+            
+            currentController = controller
             
             switch semaphore.wait(timeout: .now() + timeout) {
             case .timedOut:
@@ -106,7 +104,7 @@ final class WebPresenterImpl: WebPresenter {
             case .error(let error):
                 parsedResult = try parse(error: error, fails: state.fails)
             }
-            
+                        
             switch parsedResult {
             case let .response(value):
                 state.result = .response(value)
