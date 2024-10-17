@@ -141,18 +141,6 @@ final class AuthorizatorImpl: Authorizator {
         defer { webPresenter.dismiss() }
 
         let token = try webToken(sessionId: sessionId, request: webRequest)
-            
-//        if vkAppProxy.canSend(query: appAuthQuery) {
-//            vkAppProxy.send(query: appAuthQuery)
-//            guard let vkAppToken = vkAppToken else {
-//                throw VKError.authorizationCancelled
-//            }
-//
-//            token = vkAppToken
-//        }
-//        else {
-//            token = try webToken(sessionId: sessionId, request: webRequest)
-//        }
 
         try tokenStorage.save(token, for:  sessionId)
         return token
