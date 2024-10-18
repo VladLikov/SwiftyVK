@@ -5,7 +5,7 @@
     import UIKit
     typealias VKStoryboard = UIStoryboard
 #endif
-
+import SafariServices
 final class DependenciesImpl: Dependencies {
     
     private let appId: String
@@ -158,12 +158,12 @@ final class DependenciesImpl: Dependencies {
             cookiesHolder: nil
         )
     }()
-    
-    func webController(urlRequest: URLRequest, onResult: @escaping (WebControllerResult) -> (), onDismiss: (() -> ())?) -> any WebController {
+        
+    func webController(urlRequest: URLRequest, onResult: @escaping (WebControllerResult) -> (), onDismiss: (() -> ())?) -> WebControllerIOS {
         DispatchQueue.anywayOnMain {
-            let vc = WebControllerIOS(urlRequest: urlRequest, onResult: onResult, onDismiss: onDismiss) ?? webController(onDismiss: onDismiss)
+            let vc = WebControllerIOS(urlRequest: urlRequest, onResult: onResult, onDismiss: onDismiss)
             self.delegate?.vkNeedToPresent(viewController: vc as! VKViewController)
-            return vc
+            return vc!
         }
     }
     
