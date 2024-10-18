@@ -48,7 +48,7 @@ protocol TokenMaker: class {
 }
 
 protocol WebControllerMaker: class {
-    func webController(urlRequest: URLRequest, onResult: @escaping (WebControllerResult) -> (), onDismiss: (() -> ())?) -> WebController
+    func webController(urlRequest: URLRequest, onResult: @escaping (WebControllerResult) -> (), onDismiss: (() -> ())?) -> WebControllerIOS
 }
 
 protocol CaptchaControllerMaker: class {
