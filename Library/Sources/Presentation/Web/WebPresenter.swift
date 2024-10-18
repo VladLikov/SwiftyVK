@@ -1,5 +1,5 @@
 import Foundation
-
+import SafariServices
 protocol WebPresenter: class {
     func presentWith(urlRequest: URLRequest) throws -> String
     func dismiss()
@@ -51,13 +51,15 @@ final class WebPresenterImpl: WebPresenter {
         self.timeout = timeout
     }
     
+    var strongRefDelegate: SFSafariViewControllerDelegate? = nil
+    
     func presentWith(urlRequest: URLRequest) throws -> String {
         guard let controllerMaker = controllerMaker else { throw VKError.weakObjectWasDeallocated }
 
         let semaphore = DispatchSemaphore(value: 0)
         let state = LoadingState(originalPath: urlRequest.url?.path ?? "")
         
-        return try uiSyncQueue.sync {
+        return try uiSyncQueue.sync { [weak self] in
             
             let controller = controllerMaker.webController(
                 urlRequest: urlRequest,
@@ -66,9 +68,13 @@ final class WebPresenterImpl: WebPresenter {
                         result: $0,
                         state: state
                     )
-                }, onDismiss: {
+                }, onDismiss: { [weak self] in
                     semaphore.signal()
+                    self?.strongRefDelegate = nil
                 })
+            
+            // This is a hack to avoid web controller dealloc delegate sometimes
+            self?.strongRefDelegate = controller.delegate
             
             // This is a hack to avoid crash while WebKit deinitializing not in the main thread
             // https://github.com/SwiftyVK/SwiftyVK/issues/142
