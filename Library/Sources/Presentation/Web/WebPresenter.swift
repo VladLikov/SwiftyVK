@@ -1,5 +1,6 @@
 import Foundation
-import SafariServices
+import AuthenticationServices
+
 protocol WebPresenter: class {
     func presentWith(urlRequest: URLRequest) throws -> String
     func dismiss()
@@ -32,13 +33,21 @@ private final class LoadingState {
     }
 }
 
-final class WebPresenterImpl: WebPresenter {
+final class WebPresenterImpl: NSObject, WebPresenter, ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        DispatchQueue.anywayOnMain {
+            UIApplication.shared.keyWindow!
+        }
+    }
+    
     private let uiSyncQueue: DispatchQueue
     private weak var controllerMaker: WebControllerMaker?
-    private weak var currentController: WebController?
+    private var webAuthSession: ASWebAuthenticationSession?
     private let maxFails: Int
     private let timeout: TimeInterval
 
+    private let callbackURLScheme = "vk5549492"
+    
     init(
         uiSyncQueue: DispatchQueue,
         controllerMaker: WebControllerMaker,
@@ -50,9 +59,7 @@ final class WebPresenterImpl: WebPresenter {
         self.maxFails = maxFails
         self.timeout = timeout
     }
-    
-    var strongRefDelegate: SFSafariViewControllerDelegate? = nil
-    
+        
     func presentWith(urlRequest: URLRequest) throws -> String {
         guard let controllerMaker = controllerMaker else { throw VKError.weakObjectWasDeallocated }
 
@@ -60,27 +67,37 @@ final class WebPresenterImpl: WebPresenter {
         let state = LoadingState(originalPath: urlRequest.url?.path ?? "")
         
         return try uiSyncQueue.sync { [weak self] in
+                                
+            let webAuthSession = ASWebAuthenticationSession(
+                url: urlRequest.url!,
+                callbackURLScheme: callbackURLScheme)
+            { callback, error in
+                                
+                guard error == nil, let callback else {
+                    return
+                }
+                
+                let parsedResult = try? self?.parse(url: callback, originalPath: state.originalPath)
+
+                switch parsedResult {
+                case let .response(value):
+                    state.result = .response(value)
+                    
+                case .fail:
+                    state.fails += 1
+                    
+                default:
+                    break
+                }
+                
+                semaphore.signal()
+                                                
+            }
             
-            let controller = controllerMaker.webController(
-                urlRequest: urlRequest,
-                onResult: { [weak self] in
-                    self?.handle(
-                        result: $0,
-                        state: state
-                    )
-                }, onDismiss: { [weak self] in
-                    semaphore.signal()
-                    self?.strongRefDelegate = nil
-                })
+            webAuthSession.presentationContextProvider = self
+            webAuthSession.start()
             
-            // This is a hack to avoid web controller dealloc delegate sometimes
-            self?.strongRefDelegate = controller.delegate
-            
-            // This is a hack to avoid crash while WebKit deinitializing not in the main thread
-            // https://github.com/SwiftyVK/SwiftyVK/issues/142
-            defer { releaseInMainThreadAfterDelay(controller) }
-            
-            currentController = controller
+            self?.webAuthSession = webAuthSession
             
             switch semaphore.wait(timeout: .now() + timeout) {
             case .timedOut:
@@ -100,52 +117,16 @@ final class WebPresenterImpl: WebPresenter {
         }
     }
     
-    private func handle(result: WebControllerResult, state: LoadingState) {
-        do {
-            let parsedResult: ResponseParsingResult
-            
-            switch result {
-            case .response(let url):
-                parsedResult = try parse(url: url, originalPath: state.originalPath)
-            case .error(let error):
-                parsedResult = try parse(error: error, fails: state.fails)
-            }
-                        
-            switch parsedResult {
-            case let .response(value):
-                state.result = .response(value)
-                
-            case .fail:
-                state.fails += 1
-                currentController?.reload()
-                
-            case .nothing:
-                break
-                
-            case .wrongPage:
-                currentController?.goBack()
-            }
-        }
-            
-        catch let error {
-            state.result = .error(error.toVK())
-        }
-        
-        if state.result != nil {
-            currentController?.dismiss()
-        }
-    }
-    
     private func parse(url maybeUrl: URL?, originalPath: String) throws -> ResponseParsingResult {
         guard let url = maybeUrl else {
             throw VKError.authorizationUrlIsNil
         }
                 
-        let host = url.host ?? ""
         let fragment = url.fragment ?? ""
         let query = url.query ?? ""
-        
-        if host != "vk.com" && host != "m.vk.com" && host != "oauth.vk.com" {
+        let scheme = url.scheme ?? ""
+                
+        if scheme != callbackURLScheme {
             return .wrongPage
         }
         if fragment.isEmpty && query.isEmpty {
@@ -182,13 +163,7 @@ final class WebPresenterImpl: WebPresenter {
         throw error
     }
     
-    private func releaseInMainThreadAfterDelay(_ controller: WebController) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            controller.dismiss()
-        }
-    }
-    
     func dismiss() {
-        currentController?.dismiss()
+        self.webAuthSession?.cancel()
     }
 }
