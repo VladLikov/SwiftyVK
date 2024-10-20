@@ -13,7 +13,8 @@ final class AuthorizatorImpl: Authorizator {
     
     private let queue = DispatchQueue(label: "SwiftyVK.authorizatorQueue")
     private let webAuthorizeUrl = "https://oauth.vk.com/authorize?"
-    private let webRedirectUrl = "https://oauth.vk.com/blank.html"
+//    private let webRedirectUrl = "https://oauth.vk.com/blank.html"
+    private let webRedirectUrl = "vk5549492://authorize"
     
     private let appId: String
     private var tokenStorage: TokenStorage
@@ -71,6 +72,7 @@ final class AuthorizatorImpl: Authorizator {
                 revoke: revoke
             )
 
+            try vkAppProxy.send(query: vkAppAuthQuery)
             return try getToken(sessionId: sessionId, webRequest: webAuthRequest, appAuthQuery: vkAppAuthQuery)
         }
     }
@@ -147,6 +149,10 @@ final class AuthorizatorImpl: Authorizator {
     }
     
     private func webToken(sessionId: String, request: URLRequest) throws -> InvalidatableToken {
+        if let vkAppToken {
+            return vkAppToken
+        }
+        
         defer { webPresenter.dismiss() }
 
         guard let url = request.url else {
@@ -156,7 +162,6 @@ final class AuthorizatorImpl: Authorizator {
         do {
             cookiesHolder?.replace(for: sessionId, url: url)
             let tokenInfo = try webPresenter.presentWith(urlRequest: request)
-            print(tokenInfo)
             let token = try makeToken(tokenInfo: tokenInfo)
             cookiesHolder?.save(for: sessionId, url: url)
             return token
