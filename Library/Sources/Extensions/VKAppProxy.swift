@@ -51,7 +51,7 @@ final class VKAppProxyImpl: VKAppProxy {
                 return false
             }
 
-            guard  urlOpener.canOpenURL(url) else {
+            guard urlOpener.canOpenURL(url) else {
                 return false
             }
 
@@ -64,9 +64,11 @@ final class VKAppProxyImpl: VKAppProxy {
             return nil
         }
 
-        guard  urlOpener.canOpenURL(url) else {
+        guard urlOpener.canOpenURL(url) else {
             return nil
         }
+        
+        UIApplication.shared.open(url)
 
         return url
     }
@@ -77,9 +79,11 @@ final class VKAppProxyImpl: VKAppProxy {
                 return false
             }
 
-            guard urlOpener.openURL(url) else {
-                return false
-            }
+//            guard urlOpener.openURL(url) else {
+//                return false
+//            }
+            
+            UIApplication.shared.open(url)
             
             return true
         }
