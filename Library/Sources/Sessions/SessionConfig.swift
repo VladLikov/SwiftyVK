@@ -3,7 +3,7 @@ import Foundation
 /// Respesent config of VK user session
 public struct SessionConfig: Codable {
     /// Default supported apiVersion
-    public static let defaultApiVersion = "5.92"
+    public static let defaultApiVersion = "5.199"
     
     /// Config with default values
     public static let `default` = SessionConfig()
@@ -21,7 +21,7 @@ public struct SessionConfig: Codable {
     /// like authorization, captcha, validation nedеed and present dialog to user for resolve this situation.
     public var handleErrors: Bool
     
-    let sdkVersion = "1.3.17"
+    let sdkVersion = "1.6.1"
     
     /// Init new config
     /// - parameter apiVersion: VK API version. By default uses latest version.
